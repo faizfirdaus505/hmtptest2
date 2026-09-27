@@ -2162,7 +2162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         (3 - 2 * leakProgress);
 
        
-      let leakOpacity = leakEase * 0.15;
+      let leakOpacity = leakEase * 0.10;
 
        
       if (p >= 0.99) {
