@@ -15,14 +15,17 @@ var DEV_USERNAME = 'admin';       // ← GANTI USERNAME DI SINI
 var DEV_PASSWORD = 'hmtp2025';    // ← GANTI PASSWORD DI SINI
 
 /* ================================================================
-   GITHUB CONFIG — HARDCODED (tidak perlu diubah di UI)
+   GITHUB REPO CONFIG — HARDCODED
    Ubah nilai di bawah lalu upload ulang file ini ke repo.
+   Token TIDAK disimpan di sini (agar tidak di-revoke GitHub).
+   Token diisi 1x lewat tombol GitHub di Dev Badge → tersimpan lokal.
 ================================================================ */
-var GH_TOKEN    = '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'; // ← TOKEN GITHUB
-var GH_OWNER    = 'faizfirdaus505';                              // ← USERNAME GITHUB
-var GH_REPO     = 'hmtptest2';                                      // ← NAMA REPOSITORY
-var GH_BRANCH   = 'main';                                        // ← BRANCH
-var GH_PAGES    = 'https://faizfirdaus505.github.io/hmtptest2/';   // ← GITHUB PAGES URL
+var GH_REPO_CONFIG = {
+  owner:    'faizfirdaus505',
+  repo:     'porto2',
+  branch:   'main',
+  pagesUrl: 'https://faizfirdaus505.github.io/porto2/'
+};
 
 /* ================================================================ */
 
@@ -30,7 +33,7 @@ var GH_PAGES    = 'https://faizfirdaus505.github.io/hmtptest2/';   // ← GITHUB
   'use strict';
 
   var SESSION_KEY         = 'hmtp_dev_active';
-  /* GH_CONFIG_KEY dihapus — config GitHub sekarang hardcoded di atas */
+  var GH_TOKEN_KEY        = 'hmtp_gh_token';   /* hanya token yang disimpan lokal */
   var PROYEK_DYN_KEY      = 'hmtp_proyek_dynamic';
   var PROYEK_STATIC_DEL   = 'hmtp_proyek_static_deleted'; /* FIX: kartu statis yg dihapus */
   var PROYEK_PER_PAGE     = 6;
@@ -44,11 +47,20 @@ var GH_PAGES    = 'https://faizfirdaus505.github.io/hmtptest2/';   // ← GITHUB
      GITHUB API
   ────────────────────────────────────────────────────────────── */
   function getGHConfig() {
-    /* Hardcoded — selalu pakai nilai dari variabel di atas, bukan localStorage */
-    return { token: GH_TOKEN, owner: GH_OWNER, repo: GH_REPO, branch: GH_BRANCH, pagesUrl: GH_PAGES };
+    /* Repo config dari hardcoded GH_REPO_CONFIG, token dari localStorage */
+    var token = '';
+    try { token = localStorage.getItem(GH_TOKEN_KEY) || ''; } catch (e) {}
+    return {
+      token:    token,
+      owner:    GH_REPO_CONFIG.owner,
+      repo:     GH_REPO_CONFIG.repo,
+      branch:   GH_REPO_CONFIG.branch   || 'main',
+      pagesUrl: GH_REPO_CONFIG.pagesUrl || ''
+    };
   }
   function saveGHConfig(cfg) {
-    /* No-op — config sudah hardcoded, tidak perlu disimpan ke localStorage */
+    /* Hanya simpan token — repo config sudah hardcoded */
+    try { if (cfg && cfg.token) localStorage.setItem(GH_TOKEN_KEY, cfg.token); } catch (e) {}
   }
   function ghHeaders(token) {
     return { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
@@ -341,30 +353,37 @@ var GH_PAGES    = 'https://faizfirdaus505.github.io/hmtptest2/';   // ← GITHUB
     var modal = document.getElementById('devGithubModal');
     if (!modal) return;
     var cfg = getGHConfig();
-    /* Isi field & jadikan readonly (tidak bisa diedit dari UI) */
+
+    /* Helper: isi field biasa (editable) */
     var set = function (id, v) {
+      var el = document.getElementById(id);
+      if (el) el.value = v || '';
+    };
+    /* Helper: isi field readonly (hardcoded — tidak bisa diubah dari UI) */
+    var setReadonly = function (id, v) {
       var el = document.getElementById(id);
       if (!el) return;
       el.value = v || '';
       el.setAttribute('readonly', 'readonly');
-      el.style.opacity = '0.65';
+      el.style.opacity = '0.55';
       el.style.cursor  = 'not-allowed';
     };
-    /* Sembunyikan token asli — tampilkan sebagian saja demi keamanan */
-    var maskedToken = cfg.token ? cfg.token.slice(0, 6) + '••••••••••••••••••••••••••••••••••' : '';
-    set('ghToken', maskedToken);
-    set('ghOwner', cfg.owner);
-    set('ghRepo',  cfg.repo);
-    set('ghBranch',   cfg.branch || 'main');
-    set('ghPagesUrl', cfg.pagesUrl);
-    /* Sembunyikan tombol Simpan & Batal — config tidak bisa diubah dari UI */
+
+    /* Token → editable (disimpan lokal, tidak ada di kode) */
+    set('ghToken', cfg.token);
+
+    /* Repo info → readonly dari GH_REPO_CONFIG */
+    setReadonly('ghOwner',    cfg.owner);
+    setReadonly('ghRepo',     cfg.repo);
+    setReadonly('ghBranch',   cfg.branch);
+    setReadonly('ghPagesUrl', cfg.pagesUrl);
+
+    /* Pastikan tombol Simpan tampil (hanya untuk token) */
     var saveBtn   = document.getElementById('devGhSave');
     var cancelBtn = document.getElementById('devGhCancel');
-    if (saveBtn)   saveBtn.style.display   = 'none';
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    /* Tampilkan label "Hardcoded" di header modal jika ada */
-    var subtitle = modal.querySelector('.dev-gh-subtitle, p, small');
-    if (subtitle) subtitle.textContent = '🔒 Konfigurasi terkunci — ubah di devmode.js lalu upload ulang.';
+    if (saveBtn)   { saveBtn.style.display   = ''; saveBtn.disabled = false; }
+    if (cancelBtn)   cancelBtn.style.display = '';
+
     modal.removeAttribute('aria-hidden'); modal.classList.add('is-open');
     document.documentElement.classList.add('no-scroll');
   }
@@ -384,16 +403,29 @@ var GH_PAGES    = 'https://faizfirdaus505.github.io/hmtptest2/';   // ← GITHUB
       var el = document.getElementById(id); if (el) el.addEventListener('click', closeGithubModal);
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal.classList.contains('is-open')) closeGithubModal(); });
-    /* Tombol Simpan dinonaktifkan — config hardcoded, tidak bisa diubah dari UI */
+    /* Simpan hanya token — repo config diambil dari GH_REPO_CONFIG (hardcoded) */
     if (saveBtn) {
-      saveBtn.disabled = true;
-      saveBtn.style.display = 'none';
+      saveBtn.addEventListener('click', function () {
+        var tokenEl = document.getElementById('ghToken');
+        var token   = tokenEl ? tokenEl.value.trim() : '';
+        if (!token) { showToast('✗ Masukkan Personal Access Token dulu', 'err'); return; }
+        saveGHConfig({ token: token });
+        closeGithubModal();
+        showToast('✓ Token GitHub tersimpan', 'ok');
+      });
     }
     if (testBtn) {
       testBtn.addEventListener('click', async function () {
-        /* Pakai hardcoded config, bukan nilai dari form (field sudah readonly/masked) */
-        var cfg = getGHConfig();
-        if (!cfg.token || !cfg.owner || !cfg.repo) { if (status) { status.textContent = '✗ Config belum diisi di devmode.js'; status.className = 'dev-gh-status dev-gh-status--err'; } return; }
+        /* Token dari input (yang baru diketik), repo info dari GH_REPO_CONFIG */
+        var tokenEl = document.getElementById('ghToken');
+        var cfg = {
+          token:  tokenEl ? tokenEl.value.trim() : getGHConfig().token,
+          owner:  GH_REPO_CONFIG.owner,
+          repo:   GH_REPO_CONFIG.repo,
+          branch: GH_REPO_CONFIG.branch || 'main'
+        };
+        if (!cfg.token) { if (status) { status.textContent = '✗ Masukkan token dulu'; status.className = 'dev-gh-status dev-gh-status--err'; } return; }
+        if (!cfg.owner || !cfg.repo) { if (status) { status.textContent = '✗ GH_REPO_CONFIG belum diisi di devmode.js'; status.className = 'dev-gh-status dev-gh-status--err'; } return; }
         testBtn.disabled = true; testBtn.textContent = 'Menghubungkan…';
         if (status) { status.textContent = ''; status.className = 'dev-gh-status'; }
         var res = await window.hmtpGH.testConnection(cfg);
