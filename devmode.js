@@ -18,7 +18,7 @@ var DEV_PASSWORD = 'hmtp2025';    // ← GANTI PASSWORD DI SINI
    GITHUB CONFIG — HARDCODED (tidak perlu diubah di UI)
    Ubah nilai di bawah lalu upload ulang file ini ke repo.
 ================================================================ */
-var GH_TOKEN    = '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'; // ← TOKEN GITHUB
+var GH_TOKEN    = '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'; // ← TOKEN GITHUB
 var GH_OWNER    = 'faizfirdaus505';                              // ← USERNAME GITHUB
 var GH_REPO     = 'hmtptest2';                                      // ← NAMA REPOSITORY
 var GH_BRANCH   = 'main';                                        // ← BRANCH
